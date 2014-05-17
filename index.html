@@ -1,7 +1,11 @@
+<!--http://162.248.167.144:4000/-->
+
 <html>
   <head>
     <title>Gracefully Degrading Web Workers</title>
   </head>
+  <script src='http://code.jquery.com/jquery-2.1.1.min.js'></script>
+  <script src='http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.5.2/underscore-min.js'></script>
 
   <body>
 
@@ -11,29 +15,39 @@
     <button id="stop">
       Stop Web Workers
     </button>
+    <h4>Console</h4>
+    <div id="console">
+    </div>
 
   </body>
 
   <script>
+    console.log = function(s){
+      $("#console").append("<div>" + s + "</div>");
+    }
+    var numWorkers = 3;
+    var workers = [];
     var startButton = document.getElementById("start");
     var stopButton = document.getElementById("stop");
-    var worker1 = new Worker('work.js');
-    var worker2 = new Worker('work.js');
-    var worker3 = new Worker('work.js');
 
-    ///worker1.addEventListener('message', function(e){
-    ///  console.log(e.data);
-    ///}, false);
+    for(var i=0; i < numWorkers; i++){
+      workers.push(new Worker('work.js'));
+    }
+    _.each(workers, function(worker){
+      worker.addEventListener('message', function(e){
+        console.log(e.data);
+      }, false);
+    });
 
     startButton.onclick = function(){
-      worker1.postMessage({command:'start', id: 1});
-      worker2.postMessage({command:'start', id: 2});
-      worker3.postMessage({command:'start', id: 3});
+      _.each(workers, function(worker, i){
+        worker.postMessage({command:'start', id:i});
+      });
     }
     stopButton.onclick = function(){
-      worker1.postMessage({command:'stop', id: 1});
-      worker2.postMessage({command:'stop', id: 2});
-      worker3.postMessage({command:'stop', id: 3});
+      _.each(workers, function(worker){
+        worker.postMessage({command:'start'});
+      });
     }
 
   </script>
