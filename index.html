@@ -22,34 +22,91 @@
   </body>
 
   <script>
-    console.log = function(s){
-      $("#console").append("<div>" + s + "</div>");
+    
+    var initialTime;
+    var finalTime;
+    var counter = 0;
+    var log = function(param, value){
+      $("#console").append("<div>" + counter + ". " + param + " " + value + "</div>");
     }
-    var numWorkers = 3;
-    var workers = [];
+    var work = [];
+    var generateWorkInterval;
+    function generateWork(){
+      generateWorkInterval = setInterval(function(){
+        //var param = Math.floor(Math.random() * 1000) + 100;
+        var param = 10227;
+        work.push({param: param});
+      }, 1);
+    }
+    function WorkerManager(){
+      var numWorkers = 1;
+      var workers = [];
+      var roundRobinPointer = 0;
+
+      for(var i=0; i < numWorkers; i++){
+        workers.push(new Worker('work.js'));
+      }
+      _.each(workers, function(worker){
+        worker.addEventListener('message', function(e){
+          log(e.data.param, e.data.value);
+          counter = counter + 1;
+          if(counter === 100){
+            finalTime = new Date().getTime();
+            var totalTime = finalTime - initialTime;
+            var totalTimeString = 'Total Time: ' + totalTime;
+            $("#console").append("<div>" + totalTimeString + "</div>");
+            
+            clearInterval(generateWorkInterval);
+            workerManager.stop();
+          }
+        }, false);
+      });
+
+      var assign = function(param){
+
+        workers[roundRobinPointer].postMessage(param);
+        i = i + 1;
+        if(i > numWorkers - 1){
+          i = 0;
+        }
+      };
+      var dispatchWorkInterval = null;
+      this.dispatchWork = function(){
+        dispatchWorkInterval = setInterval(function(){
+          if(work.length > 0){
+            var param = work.pop();
+            assign(param);
+          }
+        }, 10);
+      };
+
+      this.stop = function(){
+        clearInterval(dispatchWorkInterval);
+      };
+      
+      return {
+        dispatchWork: this.dispatchWork,
+        stop: this.stop
+      }
+    }
+
+    var workerManager = new WorkerManager();
+
+
     var startButton = document.getElementById("start");
     var stopButton = document.getElementById("stop");
 
-    for(var i=0; i < numWorkers; i++){
-      workers.push(new Worker('work.js'));
-    }
-    _.each(workers, function(worker){
-      worker.addEventListener('message', function(e){
-        console.log(e.data);
-      }, false);
-    });
+
 
     startButton.onclick = function(){
-      _.each(workers, function(worker, i){
-        worker.postMessage({command:'start', id:i});
-      });
+      initialTime = new Date().getTime();
+      generateWork();
+      workerManager.dispatchWork();
     }
     stopButton.onclick = function(){
-      _.each(workers, function(worker){
-        worker.postMessage({command:'start'});
-      });
+      clearInterval(generateWorkInterval);
+      workerManager.stop();
     }
-
   </script>
  
 </html>
